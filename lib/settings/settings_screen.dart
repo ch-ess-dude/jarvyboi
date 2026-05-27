@@ -1,23 +1,69 @@
 // settings_screen.dart — register: utility
 // Neutral darks. Geist only. Boring on purpose. Fast, invisible when done.
+// No account system — Jarvy is local-only, no auth, no cloud.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../database/database.dart';
 import '../theme/jarvy_theme.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _dailyReview = true;
   bool _workoutReminder = true;
   bool _streakNudges = false;
   bool _libraryHighlights = false;
   bool _kineticAccent = true;
   final bool _reduceMotion = false;
+
+  Future<void> _confirmDeleteAll(BuildContext context, JarvyRegister t) async {
+    final red = t.destructive ?? oklch(.58, .16, 25);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: t.surface,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(JarvySpacing.radiusSoft)),
+        title: Text('Delete all data?',
+            style: t.body.copyWith(fontWeight: FontWeight.w600)),
+        content: Text(
+          'This permanently deletes every habit, task, project, entry, and pin. '
+          'There is no undo.',
+          style: t.metadata.copyWith(color: t.muted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancel', style: t.body.copyWith(color: t.muted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('Delete everything',
+                style: t.body.copyWith(color: red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      await ref.read(dbProvider).clearAllData();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('All data deleted.',
+                style: t.metadata.copyWith(color: t.ink)),
+            backgroundColor: t.surface,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +89,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
                 children: [
-                  // Back chevron — visible when pushed as modal route
                   if (Navigator.of(context).canPop())
                     GestureDetector(
                       onTap: () => Navigator.of(context).pop(),
@@ -62,17 +107,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
-            // ── Account ───────────────────────────────────────────────────
+            // ── Data ─────────────────────────────────────────────────────
+            // Local-only — no account, no cloud. jarvy.db lives on-device.
             _Section(
-              title: 'Account',
+              title: 'Data',
               t: t,
               children: [
-                _NavRow(
-                    label: 'Mira Singh', value: 'mira@jarvy.app', t: t),
-                _NavRow(
-                    label: 'iCloud sync', value: '2 min ago', t: t),
-                _NavRow(
-                    label: 'Export data', value: 'JSON · CSV', t: t,
+                _NavRow(label: 'Export data', value: 'JSON · CSV', t: t,
                     last: true),
               ],
             ),
@@ -150,43 +191,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
 
-            // ── Restore CTA (the only blue thing) ─────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: JarvySpacing.md,
-                  vertical: JarvySpacing.sm),
-              child: Column(
-                children: [
-                  GestureDetector(
-                    onTap: () {},
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: t.accent,
-                        borderRadius: BorderRadius.circular(
-                            JarvySpacing.radiusSoft),
-                      ),
-                      child: Text(
-                        'Restore from backup',
-                        style: t.body.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: t.background,
-                          letterSpacing: -0.1,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: JarvySpacing.sm),
-                  Text(
-                    'Last backup: yesterday, 23:14',
-                    style: t.metadata.copyWith(color: t.muted),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-
             const SizedBox(height: JarvySpacing.sm),
 
             // ── Danger zone ───────────────────────────────────────────────
@@ -194,9 +198,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Danger zone',
               t: t,
               children: [
-                _DangerRow(label: 'Sign out', t: t),
-                _DangerRow(label: 'Delete all logs', t: t),
-                _DangerRow(label: 'Delete account', t: t, last: true),
+                _DangerRow(
+                  label: 'Delete all data',
+                  t: t,
+                  last: true,
+                  onTap: () => _confirmDeleteAll(context, t),
+                ),
               ],
             ),
 
@@ -206,8 +213,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Center(
                 child: Text(
                   'jarvy · 2026 · made for one person at a time',
-                  style:
-                      t.mono.copyWith(color: t.faint, fontSize: 9, letterSpacing: 0.4),
+                  style: t.mono
+                      .copyWith(color: t.faint, fontSize: 9, letterSpacing: 0.4),
                 ),
               ),
             ),
@@ -239,22 +246,17 @@ class _Section extends StatelessWidget {
                 JarvySpacing.md, 0, JarvySpacing.md, 6),
             child: Text(
               title.toUpperCase(),
-              style: t.kicker.copyWith(
-                  color: t.muted, letterSpacing: 1.2),
+              style: t.kicker.copyWith(color: t.muted, letterSpacing: 1.2),
             ),
           ),
           Container(
-            margin: const EdgeInsets.symmetric(
-                horizontal: JarvySpacing.sm),
+            margin: const EdgeInsets.symmetric(horizontal: JarvySpacing.sm),
             decoration: BoxDecoration(
               color: t.surface,
               border: Border.all(color: t.rule, width: 0.5),
-              borderRadius:
-                  BorderRadius.circular(JarvySpacing.radiusSoft),
+              borderRadius: BorderRadius.circular(JarvySpacing.radiusSoft),
             ),
-            child: Column(
-              children: children,
-            ),
+            child: Column(children: children),
           ),
         ],
       ),
@@ -284,9 +286,7 @@ class _NavRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Text(label, style: t.body),
-          ),
+          Expanded(child: Text(label, style: t.body)),
           if (value != null) ...[
             Text(value!, style: t.metadata),
             const SizedBox(width: 8),
@@ -367,8 +367,7 @@ class _JarvyToggle extends StatelessWidget {
         decoration: BoxDecoration(
           color: value ? t.ink : t.rule,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-              color: value ? t.ink : t.faint, width: 0.5),
+          border: Border.all(color: value ? t.ink : t.faint, width: 0.5),
         ),
         child: Stack(
           children: [
@@ -399,25 +398,24 @@ class _DangerRow extends StatelessWidget {
   final String label;
   final JarvyRegister t;
   final bool last;
+  final VoidCallback? onTap;
   const _DangerRow(
-      {required this.label, required this.t, this.last = false});
+      {required this.label, required this.t, this.last = false, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final red = t.destructive ?? oklch(.58, .16, 25);
     return GestureDetector(
-      onTap: () {},
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(
             horizontal: JarvySpacing.md, vertical: 14),
         decoration: BoxDecoration(
           border: last
               ? null
-              : Border(
-                  bottom: BorderSide(color: t.rule, width: 0.5)),
+              : Border(bottom: BorderSide(color: t.rule, width: 0.5)),
         ),
-        child: Text(label,
-            style: t.body.copyWith(color: red)),
+        child: Text(label, style: t.body.copyWith(color: red)),
       ),
     );
   }

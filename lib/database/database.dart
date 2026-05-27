@@ -302,6 +302,20 @@ class AppDatabase extends _$AppDatabase {
   Future<void> addStudySession(StudySessionsCompanion s) =>
       into(studySessions).insert(s);
 
+  // ── Clear all data ────────────────────────────────────────────────────
+  Future<void> clearAllData() async {
+    await delete(dailyLogs).go();
+    await delete(habits).go();
+    await delete(habitCompletions).go();
+    await delete(calorieEntries).go();
+    await delete(workouts).go();
+    await delete(projects).go();
+    await delete(tasks).go();
+    await delete(pins).go();
+    await delete(interests).go();
+    await delete(studySessions).go();
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────
   static DateTime _dayStart(DateTime dt) =>
       DateTime(dt.year, dt.month, dt.day);
