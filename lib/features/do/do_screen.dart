@@ -24,7 +24,7 @@ class DoScreen extends ConsumerWidget {
         child: CustomScrollView(
           slivers: [
             SliverPadding(
-              padding: EdgeInsets.fromLTRB(
+              padding: const EdgeInsets.fromLTRB(
                 JarvySpacing.lg, JarvySpacing.md,
                 JarvySpacing.lg, 0,
               ),

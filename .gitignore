@@ -5,7 +5,7 @@
 .packages
 .pub-cache/
 .pub/
-build/
+/build/
 *.iml
 
 # Generated Drift code — regenerate with: dart run build_runner build

@@ -373,7 +373,7 @@ class _CaloriesRow extends StatelessWidget {
                               fontStyle: FontStyle.italic,
                               color: t.muted,
                               fontSize: 14)),
-                      TextSpan(text: ' 2,200 kcal'),
+                      const TextSpan(text: ' 2,200 kcal'),
                     ],
                   ),
                 ),

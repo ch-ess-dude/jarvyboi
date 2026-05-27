@@ -26,7 +26,7 @@ final todayLogEntriesProvider = StreamProvider<List<LogEntry>>((ref) {
   // Merge calories + completions + workouts
   return db.watchTodayCalorieEntries().map((calories) {
     final entries = <LogEntry>[];
-    final fmt = (DateTime dt) =>
+    String fmt(DateTime dt) =>
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     for (final c in calories) {
       entries.add(LogEntry(

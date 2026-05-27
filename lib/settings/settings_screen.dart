@@ -17,7 +17,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _streakNudges = false;
   bool _libraryHighlights = false;
   bool _kineticAccent = true;
-  bool _reduceMotion = false;
+  final bool _reduceMotion = false;
 
   @override
   Widget build(BuildContext context) {
