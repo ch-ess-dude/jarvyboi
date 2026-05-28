@@ -11,7 +11,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [dbProvider.overrideWithValue(db)],
-        child: const JarvyApp(),
+        child: const JarvyApp(onboardingDone: true),
       ),
     );
     // If we reach here the widget tree built successfully.

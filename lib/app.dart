@@ -1,4 +1,4 @@
-// app.dart — MaterialApp shell. No cloud, no Firebase, just the app.
+// app.dart — MaterialApp shell.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,16 +8,15 @@ import 'navigation/main_nav.dart';
 import 'settings/settings_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 
-// ease-out-expo approximation as a Cubic Bézier
 const _easeOutExpo = Cubic(0.16, 1, 0.3, 1);
 
 class JarvyApp extends StatelessWidget {
-  final String initialRoute;
-  const JarvyApp({super.key, this.initialRoute = '/'});
+  /// When false, shows OnboardingScreen first. When true, goes straight to MainNav.
+  final bool onboardingDone;
+  const JarvyApp({super.key, required this.onboardingDone});
 
   @override
   Widget build(BuildContext context) {
-    // Force dark status bar icons on the warm-dark background
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarBrightness: Brightness.dark,
       statusBarIconBrightness: Brightness.light,
@@ -26,11 +25,11 @@ class JarvyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Jarvy',
       debugShowCheckedModeBanner: false,
-      // Material theme is minimal — all real theming comes from JarvyTheme
       theme: jarvyMaterialTheme(JarvyRegisters.daily),
       darkTheme: jarvyMaterialTheme(JarvyRegisters.daily),
       themeMode: ThemeMode.dark,
-      initialRoute: initialRoute,
+      // home: drives the first screen — no initialRoute ambiguity
+      home: onboardingDone ? const MainNav() : const OnboardingScreen(),
       onGenerateRoute: (settings) {
         switch (settings.name) {
           case '/':
@@ -52,7 +51,6 @@ class JarvyApp extends StatelessWidget {
     );
   }
 
-  /// Directional slide transition — 300ms ease-out-expo.
   static PageRoute<T> _slideRoute<T>(Widget page, Offset begin) {
     return PageRouteBuilder<T>(
       pageBuilder: (_, __, ___) => page,

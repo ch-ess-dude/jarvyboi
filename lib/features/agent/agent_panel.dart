@@ -42,26 +42,12 @@ class _AgentPanelState extends ConsumerState<AgentPanel>
     ).animate(CurvedAnimation(parent: _slideCtrl, curve: Curves.easeOutExpo));
     _slideCtrl.forward();
     _initStt();
-
-    // Onboarding: Jarvis speaks first.
-    if (widget.isOnboarding) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _jarvisGreet());
-    }
+    // Greeting is sent by OnboardingScreen, not here — avoids double-send.
   }
 
   Future<void> _initStt() async {
     final ok = await _stt.initialize(onError: (_) {});
     if (mounted) setState(() => _sttAvailable = ok);
-  }
-
-  Future<void> _jarvisGreet() async {
-    final db = ref.read(dbProvider);
-    await ref.read(agentServiceProvider).send(
-          userMessage:
-              'Hello, I am ready for onboarding. Please start the conversation.',
-          db: db,
-          onboarding: true,
-        );
   }
 
   @override
@@ -138,37 +124,39 @@ class _AgentPanelState extends ConsumerState<AgentPanel>
     final isProcessing =
         state == AgentState.processing || state == AgentState.responding;
 
-    return SlideTransition(
-      position: _slideAnim,
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF111214),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.08),
-              width: 1,
+    final panel = Material(
+      color: Colors.transparent,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF111214),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.08),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.55),
+              blurRadius: 40,
+              spreadRadius: 4,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.55),
-                blurRadius: 40,
-                spreadRadius: 4,
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              _buildHeader(state),
-              Expanded(child: _buildConversation(conversation, streamingText)),
-              _buildInput(isProcessing),
-            ],
-          ),
+          ],
+        ),
+        child: Column(
+          children: [
+            _buildHeader(state),
+            Expanded(child: _buildConversation(conversation, streamingText)),
+            _buildInput(isProcessing),
+          ],
         ),
       ),
     );
+
+    // Embedded in OnboardingScreen — no slide needed (screen fades in itself).
+    // Used as nav overlay — slide up from bottom.
+    if (widget.isOnboarding) return panel;
+    return SlideTransition(position: _slideAnim, child: panel);
   }
 
   Widget _buildHeader(AgentState state) {
