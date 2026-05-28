@@ -35,9 +35,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
 
   Future<void> _kickOffOnboarding() async {
     final db = ref.read(dbProvider);
-    // Jarvis greets first.
+    // Send a natural greeting so Jarvis introduces himself and asks Q1.
+    // Using a plain sentence avoids models interpreting it as a command.
     await ref.read(agentServiceProvider).send(
-          userMessage: '__init_onboarding__',
+          userMessage: 'Hi',
           db: db,
           onboarding: true,
         );
@@ -54,13 +55,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     final agentState = ref.watch(agentStateProvider);
     final conversation = ref.watch(conversationProvider);
 
-    // Detect [ONBOARDING_COMPLETE] in the last assistant message.
+    // Only accept [ONBOARDING_COMPLETE] after ≥3 user replies (not on greeting).
+    final userTurns = conversation.where((m) => m.role == 'user').length;
     final lastAssistant = conversation.lastWhere(
       (m) => m.role == 'assistant',
       orElse: () => AgentMessage(
           role: '', content: '', timestamp: DateTime.fromMillisecondsSinceEpoch(0)),
     );
-    if (lastAssistant.content.contains('[ONBOARDING_COMPLETE]')) {
+    if (userTurns >= 3 && lastAssistant.content.contains('[ONBOARDING_COMPLETE]')) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _finishOnboarding());
     }
 
