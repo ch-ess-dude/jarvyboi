@@ -1,5 +1,6 @@
 // main_nav.dart — 6-tab register-adaptive bottom navigation.
-// Each screen wrapped with its own JarvyTheme. Nav tint adapts to active register.
+// Long-press on nav bar summons the agent panel overlay.
+// Sliding pill indicator follows the active tab.
 
 import 'dart:math' as math;
 import 'dart:ui';
@@ -14,6 +15,8 @@ import '../features/log/log_screen.dart';
 import '../features/body/body_screen.dart';
 import '../features/build/build_screen.dart';
 import '../features/library/library_screen.dart';
+import '../features/agent/agent_panel.dart';
+import '../features/agent/agent_provider.dart';
 
 // ── Tab state ─────────────────────────────────────────────────────────────
 
@@ -41,8 +44,9 @@ class MainNav extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final activeIdx = ref.watch(activeTabProvider);
-    final activeReg = _registerFor(activeIdx);
+    final activeIdx   = ref.watch(activeTabProvider);
+    final activeReg   = _registerFor(activeIdx);
+    final panelVisible = ref.watch(agentPanelVisibleProvider);
 
     return JarvyTheme(
       register: activeReg,
@@ -63,6 +67,29 @@ class MainNav extends ConsumerWidget {
               ],
             ),
 
+            // ── Agent panel overlay ───────────────────────────────────
+            if (panelVisible)
+              Positioned.fill(
+                child: GestureDetector(
+                  // Tap outside the panel to dismiss.
+                  onTap: () =>
+                      ref.read(agentPanelVisibleProvider.notifier).hide(),
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    alignment: Alignment.bottomCenter,
+                    child: SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.62,
+                      child: GestureDetector(
+                        // Prevent tap-through to dismissal layer.
+                        onTap: () {},
+                        child: const AgentPanel(),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
             // ── Bottom nav overlay ────────────────────────────────────
             Positioned(
               left: 0,
@@ -73,6 +100,8 @@ class MainNav extends ConsumerWidget {
                 activeRegister: activeReg,
                 onTap: (i) =>
                     ref.read(activeTabProvider.notifier).state = i,
+                onLongPress: () =>
+                    ref.read(agentPanelVisibleProvider.notifier).toggle(),
               ),
             ),
           ],
@@ -133,50 +162,106 @@ class _JarvyBottomNav extends StatelessWidget {
   final int activeIndex;
   final JarvyRegister activeRegister;
   final ValueChanged<int> onTap;
+  final VoidCallback onLongPress;
 
   const _JarvyBottomNav({
     required this.activeIndex,
     required this.activeRegister,
     required this.onTap,
+    required this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.paddingOf(context).bottom;
 
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          decoration: BoxDecoration(
-            color: activeRegister.background.withValues(alpha: 0.88),
-            border: Border(
-              top: BorderSide(
-                color: Colors.white.withValues(alpha: 0.10),
-                width: 0.5,
+    return GestureDetector(
+      onLongPress: onLongPress,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: activeRegister.background.withValues(alpha: 0.88),
+              border: Border(
+                top: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.10),
+                  width: 0.5,
+                ),
               ),
             ),
-          ),
-          padding: EdgeInsets.only(
-            top: 12,
-            bottom: math.max(bottomPad, 12),
-          ),
-          child: Row(
-            children: List.generate(
-              _tabIds.length,
-              (i) => _NavItem(
-                id: _tabIds[i],
-                label: _tabLabels[i],
-                active: i == activeIndex,
-                accent: activeRegister.accent,
-                muted: activeRegister.muted,
-                onTap: () => onTap(i),
-              ),
+            padding: EdgeInsets.only(
+              top: 12,
+              bottom: math.max(bottomPad, 12),
+            ),
+            child: Stack(
+              children: [
+                // ── Sliding pill indicator ─────────────────────────────
+                _SlidingPill(
+                  activeIndex: activeIndex,
+                  tabCount: _tabIds.length,
+                  color: activeRegister.accent,
+                ),
+                // ── Tab items ──────────────────────────────────────────
+                Row(
+                  children: List.generate(
+                    _tabIds.length,
+                    (i) => _NavItem(
+                      id: _tabIds[i],
+                      label: _tabLabels[i],
+                      active: i == activeIndex,
+                      accent: activeRegister.accent,
+                      muted: activeRegister.muted,
+                      onTap: () => onTap(i),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+// ── Sliding pill indicator ────────────────────────────────────────────────
+
+class _SlidingPill extends StatelessWidget {
+  final int activeIndex;
+  final int tabCount;
+  final Color color;
+
+  const _SlidingPill({
+    required this.activeIndex,
+    required this.tabCount,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (_, constraints) {
+      final tabW = constraints.maxWidth / tabCount;
+      return TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: activeIndex.toDouble(), end: activeIndex.toDouble()),
+        duration: const Duration(milliseconds: 200),
+        curve: const Cubic(0.16, 1, 0.3, 1),
+        builder: (_, value, __) {
+          return Positioned(
+            left: value * tabW + tabW * 0.2,
+            top: 0,
+            child: Container(
+              width: tabW * 0.6,
+              height: 2,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+          );
+        },
+      );
+    });
   }
 }
 

@@ -23,6 +23,12 @@ dependencies:
   # Typography
   google_fonts: ^6.2.1
 
+  # AI / networking
+  http: ^1.2.0
+
+  # Voice input (local STT, no cloud)
+  speech_to_text: ^6.6.0
+
   # Utilities
   intl: ^0.19.0
 

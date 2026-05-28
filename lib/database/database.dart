@@ -102,6 +102,17 @@ class StudySessions extends Table {
   TextColumn get notes => text().nullable()();
 }
 
+// Key-value store for user configuration and onboarding state.
+// Keys: calorie_target, macro_protein_pct, macro_carb_pct, macro_fat_pct,
+//       training_days_per_week, training_type, onboarding_complete
+class UserConfigs extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
 // ── Database ──────────────────────────────────────────────────────────────
 
 @DriftDatabase(tables: [
@@ -115,12 +126,21 @@ class StudySessions extends Table {
   Pins,
   Interests,
   StudySessions,
+  UserConfigs,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) await m.createTable(userConfigs);
+    },
+  );
 
   // ── Daily log ─────────────────────────────────────────────────────────
   Future<DailyLog?> todayLog() async {
@@ -302,6 +322,23 @@ class AppDatabase extends _$AppDatabase {
   Future<void> addStudySession(StudySessionsCompanion s) =>
       into(studySessions).insert(s);
 
+  // ── User config (key-value) ───────────────────────────────────────────
+  Future<String?> getConfig(String key) async {
+    final row = await (select(userConfigs)
+          ..where((t) => t.key.equals(key)))
+        .getSingleOrNull();
+    return row?.value;
+  }
+
+  Future<void> setConfig(String key, String value) async {
+    await into(userConfigs).insertOnConflictUpdate(
+      UserConfigsCompanion.insert(key: key, value: value),
+    );
+  }
+
+  Future<bool> isOnboardingComplete() async =>
+      (await getConfig('onboarding_complete')) == 'true';
+
   // ── Clear all data ────────────────────────────────────────────────────
   Future<void> clearAllData() async {
     await delete(dailyLogs).go();
@@ -314,6 +351,7 @@ class AppDatabase extends _$AppDatabase {
     await delete(pins).go();
     await delete(interests).go();
     await delete(studySessions).go();
+    await delete(userConfigs).go();
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
