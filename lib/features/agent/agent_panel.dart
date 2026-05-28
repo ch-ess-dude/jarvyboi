@@ -52,6 +52,8 @@ class _AgentPanelState extends ConsumerState<AgentPanel>
 
   @override
   void dispose() {
+    // Cancel any in-flight Ollama stream when panel is torn down.
+    ref.read(agentServiceProvider).cancelStream();
     _slideCtrl.dispose();
     _textCtrl.dispose();
     _scrollCtrl.dispose();
@@ -60,6 +62,7 @@ class _AgentPanelState extends ConsumerState<AgentPanel>
   }
 
   void _close() {
+    ref.read(agentServiceProvider).cancelStream();
     _slideCtrl.reverse().then((_) {
       if (mounted) {
         ref.read(agentPanelVisibleProvider.notifier).hide();

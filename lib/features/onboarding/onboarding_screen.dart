@@ -111,6 +111,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
 
   Future<void> _finishOnboarding() async {
     if (!mounted) return;
+    // Stop any in-flight Ollama stream before navigating away.
+    ref.read(agentServiceProvider).cancelStream();
     final db = ref.read(dbProvider);
 
     // Parse last full conversation for config values.
