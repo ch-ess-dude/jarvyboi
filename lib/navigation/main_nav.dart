@@ -227,7 +227,7 @@ class _JarvyBottomNav extends StatelessWidget {
 
 // ── Sliding pill indicator ────────────────────────────────────────────────
 
-class _SlidingPill extends StatelessWidget {
+class _SlidingPill extends StatefulWidget {
   final int activeIndex;
   final int tabCount;
   final Color color;
@@ -239,22 +239,64 @@ class _SlidingPill extends StatelessWidget {
   });
 
   @override
+  State<_SlidingPill> createState() => _SlidingPillState();
+}
+
+class _SlidingPillState extends State<_SlidingPill>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+  late double _from;
+  late double _to;
+
+  @override
+  void initState() {
+    super.initState();
+    _from = widget.activeIndex.toDouble();
+    _to   = widget.activeIndex.toDouble();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _anim = CurvedAnimation(
+      parent: _ctrl,
+      curve: const Cubic(0.16, 1, 0.3, 1),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_SlidingPill old) {
+    super.didUpdateWidget(old);
+    if (old.activeIndex != widget.activeIndex) {
+      _from = old.activeIndex.toDouble();
+      _to   = widget.activeIndex.toDouble();
+      _ctrl
+        ..value = 0
+        ..forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (_, constraints) {
-      final tabW = constraints.maxWidth / tabCount;
-      return TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: activeIndex.toDouble(), end: activeIndex.toDouble()),
-        duration: const Duration(milliseconds: 200),
-        curve: const Cubic(0.16, 1, 0.3, 1),
-        builder: (_, value, __) {
-          return Positioned(
-            left: value * tabW + tabW * 0.2,
-            top: 0,
+      final tabW = constraints.maxWidth / widget.tabCount;
+      return AnimatedBuilder(
+        animation: _anim,
+        builder: (_, __) {
+          final pos = _from + (_to - _from) * _anim.value;
+          return Padding(
+            padding: EdgeInsets.only(left: pos * tabW + tabW * 0.2),
             child: Container(
               width: tabW * 0.6,
               height: 2,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.55),
+                color: widget.color.withValues(alpha: 0.55),
                 borderRadius: BorderRadius.circular(1),
               ),
             ),
